@@ -1,0 +1,3 @@
+{
+  "app": "dotnet run -p src/S3EventTrigger/S3EventTrigger.csproj"
+}

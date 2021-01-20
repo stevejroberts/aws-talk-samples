@@ -1,14 +1,14 @@
 ﻿using Amazon.CDK;
 using System;
 
-namespace ResourceEvents
+namespace S3EventTrigger
 {
     class Program
     {
         static void Main(string[] args)
         {
             var app = new App(null);
-            new ResourceEventsStack(app, "ResourceEventsStack", new StackProps());
+            new S3EventTriggerStack(app, "S3-to-SQS-EventTriggerStack", new StackProps());
             app.Synth();
         }
     }
