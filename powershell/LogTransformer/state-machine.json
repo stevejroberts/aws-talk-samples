@@ -1,0 +1,52 @@
+﻿{
+  "Comment": "Log Transformer State Machine",
+  "StartAt": "DetermineLogType",
+  "States": {
+    "DetermineLogType": {
+      "Type": "Task",
+      "Resource": "${DetermineLogTypeTask.Arn}",
+      "Next": "ChooseTransformer"
+    },
+    "ChooseTransformer": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.LogType",
+          "StringEquals": "csv",
+          "Next": "TransformCsvLog"
+        },
+        {
+          "Variable": "$.LogType",
+          "StringEquals": "xml",
+          "Next": "TransformXmlLog"
+        },
+        {
+          "Variable": "$.LogType",
+          "StringEquals": "json",
+          "Next": "TransformJsonLog"
+        }
+      ],
+      "Default": "UnknownLogFormat"
+    },
+    "TransformCsvLog": {
+      "Type": "Task",
+      "Resource": "${TransformCsvLogTask.Arn}",
+      "End": true
+    },
+    "TransformXmlLog": {
+      "Type": "Task",
+      "Resource": "${TransformXmlLogTask.Arn}",
+      "End": true
+    },
+    "TransformJsonLog": {
+      "Type": "Task",
+      "Resource": "${TransformJsonLogTask.Arn}",
+      "End": true
+    },
+    "UnknownLogFormat": {
+      "Type": "Fail",
+      "Error": "UnknownLogFormatError",
+      "Cause": "Unknown log file format"
+    }
+  }
+}

@@ -1,0 +1,79 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="row" style="margin-top:2rem;">
+    <h3>
+        Welcome to the MiniMe console
+        <small class="text-muted"> for viewing your AWS resources!</small>
+    </h3>
+</div>
+
+<div class="row" style="margin-top:2rem;">
+    <p class="lead">
+        This sample ASP.NET Core application illustrates how you can use the
+        <a href="https://aws.amazon.com/sdk-for-net/" target="_blank">AWS SDK for .NET</a> to make calls to AWS services.
+    </p>
+    <p class="lead">
+        The sample application can also be used to learn how you can deploy .NET applications to compute services such as
+        <a href="https://aws.amazon.com/elasticbeanstalk/" target="_blank">AWS Elastic Beanstalk</a>,
+        and to serverless technologies such as
+        <a href="https://aws.amazon.com/fargate/" target="_blank">AWS Fargate</a>
+        and <a href="https://aws.amazon.com/lambda/" target="_blank">AWS Lambda</a>.
+    </p>
+</div>
+
+<div class="row" style="margin-top:2rem;">
+    <div class="card-deck">
+        <div class="card" style="width: 18rem;">
+            <a asp-page="/S3">
+                <img class="card-img-top" src="~/img/Amazon-Simple-Storage-Service-S3@4x.png" alt="Amazon S3">
+            </a>
+            <div class="card-body">
+                <h5 class="card-title">Amazon S3</h5>
+                <p class="card-text">Amazon Simple Storage Service (Amazon S3) is an object storage service offering industry-leading scalability, data availability, security, and performance</p>
+            </div>
+            <div class="card-footer">
+                <a href="https://aws.amazon.com/s3/" target="_blank" class="card-link">Learn more...</a>
+            </div>
+        </div>
+        <div class="card" style="width: 18rem;">
+            <a asp-page="/EC2">
+                <img class="card-img-top" src="~/img/Amazon-EC2@4x.png" alt="Amazon EC2">
+            </a>
+            <div class="card-body">
+                <h5 class="card-title">Amazon EC2</h5>
+                <p class="card-text">Amazon Elastic Compute Cloud (Amazon EC2) is a web service that provides secure, resizable compute capacity in the cloud.</p>
+            </div>
+            <div class="card-footer">
+                <a href="https://aws.amazon.com/ec2/" target="_blank" class="card-link">Learn more...</a>
+            </div>
+        </div>
+        <div class="card" style="width: 18rem;">
+            <a asp-page="/ParameterStore">
+                <img class="card-img-top" src="~/img/AWS-Systems-Manager_Parameter-Store_light-bg@4x.png" alt="AWS Systems Manager Parameter Store">
+            </a>
+            <div class="card-body">
+                <h5 class="card-title">AWS Systems Manager Parameter Store</h5>
+                <p class="card-text">AWS Systems Manager provides a centralized store to manage your configuration data, whether plain-text data such as database strings or secrets such as passwords.</p>
+            </div>
+            <div class="card-footer">
+                <a href="https://aws.amazon.com/systems-manager/" target="_blank" class="card-link">Learn more...</a>
+            </div>
+        </div>
+        <div class="card" style="width: 18rem;">
+            <a asp-page="/ECS">
+                <img class="card-img-top" src="~/img/Amazon-Elastic-Container-Service@4x.png" alt="Amazon Elastic Container Service">
+            </a>
+            <div class="card-body">
+                <h5 class="card-title">Amazon Elastic Container Service</h5>
+                <p class="card-text">Amazon Elastic Container Service (Amazon ECS) is a fully managed container orchestration service. You can choose to run your ECS clusters using AWS Fargate, which is serverless compute for containers</p>
+            </div>
+            <div class="card-footer">
+                <a href="https://aws.amazon.com/ecs/" target="_blank" class="card-link">Learn more...</a>
+            </div>
+        </div>
+    </div>
+</div>

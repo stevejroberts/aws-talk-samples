@@ -1,0 +1,327 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Description": "",
+
+    "Parameters": {
+        "InputBucketNameSuffix": {
+            "Type" : "String",
+            "Description" : "Text used in naming of the bucket to hold objects to transcribe",
+            "Default" : "input"
+        },
+        "OutputBucketNameSuffix": {
+            "Type" : "String",
+            "Description" : "Text used in naming of the bucket to hold output data from transcribe",
+            "Default" : "output"
+        },
+        "UserEmail" : {
+            "Type" : "String",
+            "Description" : "User email for notifications"
+        }
+    },
+
+    "Resources": {
+        "InputBucket": {
+            "Type": "AWS::S3::Bucket",
+            "DependsOn": "InputBucketInvokePermission",
+            "Properties": {
+                "BucketName": {
+                    "Fn::Sub": "${AWS::StackName}${InputBucketNameSuffix}-${AWS::Region}-${AWS::AccountId}"
+                },
+                "NotificationConfiguration": {
+                    "LambdaConfigurations": [
+                        {
+                            "Function": {
+                                "Fn::GetAtt": [
+                                    "StartTranscriptionFunction",
+                                    "Arn"
+                                ]
+                            },
+                            "Event": "s3:ObjectCreated:*"
+                        }
+                    ]
+                }
+            }
+        },
+
+        "InputBucketInvokePermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "StartTranscriptionFunction",
+                        "Arn"
+                    ]
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "s3.amazonaws.com",
+                "SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                },
+                "SourceArn": {
+                    "Fn::Sub": "arn:aws:s3:::${AWS::StackName}${InputBucketNameSuffix}-${AWS::Region}-${AWS::AccountId}"
+                }
+            }
+        },
+
+        "InputBucketNameParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Properties" : {
+                "Name" : { "Fn::Sub": "/${AWS::StackName}/InputBucket" },
+                "Type" : "String",
+                "Value" : { "Ref": "InputBucket" }
+            }
+        },
+
+        "OutputBucket": {
+            "Type": "AWS::S3::Bucket",
+            "DependsOn": "OutputBucketInvokePermission",
+            "Properties": {
+                "BucketName": {
+                    "Fn::Sub": "${AWS::StackName}${OutputBucketNameSuffix}-${AWS::Region}-${AWS::AccountId}"
+                },
+                "NotificationConfiguration": {
+                    "LambdaConfigurations": [
+                        {
+                            "Function": {
+                                "Fn::GetAtt": [
+                                    "NotifyTranscriptionCompleteFunction",
+                                    "Arn"
+                                ]
+                            },
+                            "Event": "s3:ObjectCreated:*"
+                        }
+                    ]
+                }
+            }
+        },
+
+        "OutputBucketInvokePermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "NotifyTranscriptionCompleteFunction",
+                        "Arn"
+                    ]
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "s3.amazonaws.com",
+                "SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                },
+                "SourceArn": {
+                    "Fn::Sub": "arn:aws:s3:::${AWS::StackName}${OutputBucketNameSuffix}-${AWS::Region}-${AWS::AccountId}"
+                }
+            }
+        },
+
+        "OutputBucketNameParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Properties" : {
+                "Name" : { "Fn::Sub": "/${AWS::StackName}/OutputBucket" },
+                "Type" : "String",
+                "Value" : { "Ref": "OutputBucket" }
+            }
+        },
+
+        "NotificationTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "Subscription" : [
+                    {
+                        "Protocol" : "email",
+                        "Endpoint" : { "Ref": "UserEmail" }
+                    }
+                ]
+            }
+        },
+
+        "NotificationTopicArnParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Properties" : {
+                "Name" : { "Fn::Sub": "/${AWS::StackName}/NotificationTopicArn" },
+                "Type" : "String",
+                "Value" : { "Ref": "NotificationTopic" }
+            }
+        },
+
+        "StartTranscriptionFunction": {
+            "Type": "AWS::Serverless::Function",
+            "Properties": {
+                "Handler": "StartTranscriptionJob::StartTranscriptionJob.Bootstrap::ExecuteFunction",
+                "Runtime": "dotnetcore3.1",
+                "MemorySize": 512,
+                "Timeout": 30,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "StartTranscriptionFunctionRole",
+                        "Arn"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "ParameterNameRoot": { "Fn::Sub" : "/${AWS::StackName}" }
+                    }
+                },
+                "CodeUri": "./build/StartTranscriptionJob.zip"
+            }
+        },
+
+        "StartTranscriptionFunctionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess",
+                    "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "TranscriptionPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:Get*",
+                                        "s3:List*"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:s3:::${AWS::StackName}${InputBucketNameSuffix}-${AWS::Region}-${AWS::AccountId}/*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:Put*"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:s3:::${AWS::StackName}${OutputBucketNameSuffix}-${AWS::Region}-${AWS::AccountId}/*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "transcribe:StartTranscriptionJob"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+
+        "NotifyTranscriptionCompleteFunction": {
+            "Type": "AWS::Serverless::Function",
+            "Properties": {
+                "Handler": "NotifyTranscriptionComplete::NotifyTranscriptionComplete.Bootstrap::ExecuteFunction",
+                "Runtime": "dotnetcore3.1",
+                "MemorySize": 512,
+                "Timeout": 30,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "NotifyTranscriptionCompleteFunctionRole",
+                        "Arn"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "ParameterNameRoot": { "Fn::Sub" : "/${AWS::StackName}" }
+                    }
+                },
+                "CodeUri": "./build/NotifyTranscriptionComplete.zip"
+            }
+        },
+
+        "NotifyTranscriptionCompleteFunctionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess",
+                    "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "NotificationPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:s3:::${AWS::StackName}${OutputBucketNameSuffix}-${AWS::Region}-${AWS::AccountId}/*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "sns:Publish"
+                                    ],
+                                    "Resource": {
+                                        "Ref": "NotificationTopic"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+
+    "Outputs": {
+        "InputBucket": {
+            "Description": "S3 bucket for audio file input",
+            "Value": {
+                "Ref": "InputBucket"
+            }
+        },
+
+        "OutputBucket": {
+            "Description": "S3 bucket for transcription output",
+            "Value": {
+                "Ref": "OutputBucket"
+            }
+        }
+    }
+}

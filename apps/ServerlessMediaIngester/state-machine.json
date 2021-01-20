@@ -1,0 +1,202 @@
+﻿{
+  "Comment": "MediaIngester Workflow",
+  "StartAt": "TestForWorkflowResumption",
+  "States": {
+    "TestForWorkflowResumption": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.PendingScanResults",
+          "StringEquals": "Moderation",
+          "Next": "ResumeAfterModerationInspection"
+        },
+        {
+          "Variable": "$.PendingScanResults",
+          "StringEquals": "Keywording",
+          "Next": "ResumeAfterKeywordInspection"
+        },
+        {
+          "Variable": "$.PendingScanResults",
+          "StringEquals": "CelebrityDetection",
+          "Next": "ResumeAfterCelebrityInspection"
+        }
+      ],
+      "Default": "DetermineNewMediaType"
+    },
+    "DetermineNewMediaType": {
+      "Type": "Task",
+      "Resource": "${DetermineNewMediaTypeTask.Arn}",
+      "Next": "BranchOnMediaType"
+    },
+    "BranchOnMediaType": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.ContentType",
+          "StringEquals": "Image",
+          "Next": "InspectForModeratedContent"
+        },
+        {
+          "Variable": "$.ContentType",
+          "StringEquals": "Video",
+          "Next": "InspectForModeratedContent"
+        },
+        {
+          "Variable": "$.ContentType",
+          "StringEquals": "Audio",
+          "Next": "AudioToTextConversion"
+        },
+        {
+          "Variable": "$.ContentType",
+          "StringEquals": "Text",
+          "Next": "TextToAudioConversion"
+        }
+      ],
+      "Default": "WorkflowExitOnUnknownMediaType"
+    },
+    "InspectForModeratedContent": {
+      "Type": "Task",
+      "Resource": "${InspectForModerationLabelsTask.Arn}",
+      "Next": "CheckExitOnPendingModeratedContentInspection"
+    },
+    "CheckExitOnPendingModeratedContentInspection": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Not": {
+            "Variable": "$.PendingScanResults",
+            "StringEquals": "None"
+          },
+          "Next": "WorkflowExitOnPendingTask"
+        }
+      ],
+      "Default": "AbandonFlowIfModeratedContentFound"
+    },
+    "ResumeAfterModerationInspection": {
+      "Type": "Task",
+      "Resource": "${ResumeAfterModerationInspectionTask.Arn}",
+      "Next": "AbandonFlowIfModeratedContentFound"
+    },
+    "AbandonFlowIfModeratedContentFound": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.IsUnsafe",
+          "BooleanEquals": true,
+          "Next": "RemoveUnsafeInputContent"
+        }
+      ],
+      "Default": "InspectForKeywordLabels"
+    },
+    "InspectForKeywordLabels": {
+      "Type": "Task",
+      "Resource": "${InspectForKeywordLabelsTask.Arn}",
+      "Next": "CheckExitOnPendingKeywordInspection"
+    },
+    "CheckExitOnPendingKeywordInspection": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Not": {
+            "Variable": "$.PendingScanResults",
+            "StringEquals": "None"
+          },
+          "Next": "WorkflowExitOnPendingTask"
+        }
+      ],
+      "Default": "InspectForCelebrities"
+    },
+    "ResumeAfterKeywordInspection": {
+      "Type": "Task",
+      "Resource": "${ResumeAfterKeywordInspectionTask.Arn}",
+      "Next": "InspectForCelebrities"
+    },
+    "InspectForCelebrities": {
+      "Type": "Task",
+      "Resource": "${InspectForCelebritiesTask.Arn}",
+      "Next": "CheckExitOnPendingCelebrityInspection"
+    },
+    "CheckExitOnPendingCelebrityInspection": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Not": {
+            "Variable": "$.PendingScanResults",
+            "StringEquals": "None"
+          },
+          "Next": "WorkflowExitOnPendingTask"
+        }
+      ],
+      "Default": "CopyAndTagSourceContent"
+    },
+    "ResumeAfterCelebrityInspection": {
+      "Type": "Task",
+      "Resource": "${ResumeAfterCelebrityInspectionTask.Arn}",
+      "Next": "CopyAndTagSourceContent"
+    },
+    "CopyAndTagSourceContent": {
+      "Type": "Task",
+      "Resource": "${CopyAndTagSourceContentTask.Arn}",
+      "Next": "TestForThumbnailImageRequirement"
+    },
+    "TestForThumbnailImageRequirement": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Not": {
+            "Variable": "$.ContentType",
+            "StringEquals": "Image"
+          },
+          "Next": "RemoveProcessedInputObject"
+        }
+      ],
+      "Default": "CreateThumbnailImage"
+    },
+    "CreateThumbnailImage": {
+      "Type": "Task",
+      "Resource": "${CreateThumbnailImageTask.Arn}",
+      "Next": "RemoveProcessedInputObject"
+    },
+    "AudioToTextConversion": {
+      "Type": "Task",
+      "Resource": "${AudioToTextConversionTask.Arn}",
+      "Next": "RemoveProcessedInputObject"
+    },
+    "TextToAudioConversion": {
+      "Type": "Task",
+      "Resource": "${TextToAudioConversionTask.Arn}",
+      "Next": "RemoveProcessedInputObject"
+    },
+    "RemoveUnsafeInputContent": {
+      "Type": "Task",
+      "Resource": "${RemoveProcessedInputObjectTask.Arn}",
+      "Next": "WorkflowExitOnUnsafeContent"
+    },
+    "RemoveProcessedInputObject": {
+      "Type": "Task",
+      "Resource": "${RemoveProcessedInputObjectTask.Arn}",
+      "Next": "SendIngestionCompletedNotification"
+    },
+    "SendIngestionCompletedNotification": {
+      "Type": "Task",
+      "Resource": "${SendIngestionCompletedNotificationTask.Arn}",
+      "Next": "WorkflowExitOnCompletion"
+    },
+    "WorkflowExitOnUnknownMediaType": {
+      "Type": "Fail",
+      "Error": "UnknownMediaType",
+      "Cause": "Unsupported media type/unrecognized file extension"
+    },
+    "WorkflowExitOnUnsafeContent": {
+      "Type": "Fail",
+      "Error": "UnsafeMedia",
+      "Cause": "Media failed moderation checks"
+    },
+    "WorkflowExitOnPendingTask": {
+      "Type": "Succeed"
+    },
+    "WorkflowExitOnCompletion": {
+      "Type": "Succeed"
+    }
+  }
+}

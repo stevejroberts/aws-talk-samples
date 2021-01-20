@@ -1,0 +1,75 @@
+﻿@page
+@model MiniMeConsole.Pages.ParameterStoreModel
+@{
+    ViewData["Title"] = "Systems Manager Parameter Store";
+}
+
+<div class="row" style="margin-top:2rem;">
+    <div class="media">
+        <div class="media-left">
+            <img class="media-object" src="~/img/AWS-Systems-Manager_Parameter-Store_light-bg@4x.png" alt="Systems Manager Parameter Store" />
+        </div>
+        <div class="media-body" style="margin-left:2rem;">
+            <h4 class="media-heading">AWS Systems Manager Parameter Store</h4>
+            <p class="lead">
+                <a href="https://aws.amazon.com/systems-manager/" target="_blank">AWS Systems Manager</a> provides a centralized 
+                store to manage your configuration data, whether plain-text data such as database strings or secrets such as 
+                passwords. This allows you to separate your secrets and configuration data from your code. Parameters can be 
+                tagged and organized into hierarchies, helping you manage parameters more easily. For example, you can use the 
+                same parameter name, "db-string", with a different hierarchical path, "dev/db-string” or “prod/db-string", to 
+                store different values.
+            </p>
+            <p>
+                Systems Manager is integrated with <a href="https://aws.amazon.com/kms/" target="_blank">AWS Key Management Service (KMS)</a>, 
+                allowing you to automatically encrypt the data you store. You can also control user and resource access to 
+                parameters using <a href="https://aws.amazon.com/iam/" target="_blank">AWS Identity and Access Management (IAM)</a>. 
+                Parameters can be referenced through other AWS services, such as 
+                <a href="https://aws.amazon.com/ecs/" target="_blank">Amazon Elastic Container Service</a>, 
+                <a href="https://aws.amazon.com/lambda/" target="_blank">AWS Lambda</a>, and 
+                <a href="https://aws.amazon.com/cloudformation/" target="_blank">AWS CloudFormation</a>.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="row border shadow-sm p-3 mb-5 bg-white rounded" style="margin-top:2rem">
+
+    <div class="d-block ml-4">
+        <h4>Your Parameters in United States Regions</h4>
+    </div>
+
+    <div class="container ml-4">
+        @foreach (var region in Model.Parameters.Keys)
+        {
+
+            var parameters = Model.Parameters[region];
+
+            if (parameters.Count == 0)
+            {
+                <h5>@region</h5>
+                <small class="d-block text-muted mb-2 ml-4">There are no parameters in this region.</small>
+            }
+            else
+            {
+                <h5>@region</h5>
+                <table class="table table-bordered table-sm ml-4">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Parameter Name</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var parameter in parameters)
+                        {
+                            <tr>
+                                <td>@parameter.Key</td>
+                                <td>@parameter.Value</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </div>
+</div>

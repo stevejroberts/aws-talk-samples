@@ -1,0 +1,74 @@
+﻿@page
+@model S3Model
+@{
+    ViewData["Title"] = "Amazon S3";
+}
+
+<div class="row" style="margin-top:2rem;">
+    <div class="media">
+        <div class="media-left">
+            <img class="media-object" src="~/img/Amazon-Simple-Storage-Service-S3@4x.png" alt="Amazon S3" />
+        </div>
+        <div class="media-body" style="margin-left:2rem;">
+            <h4 class="media-heading">Amazon S3</h4>
+            <p class="lead">
+                <a href="https://aws.amazon.com/s3/" target="_blank">Amazon Simple Storage Service (Amazon S3)</a> is an object 
+                storage service that offers industry-leading scalability, data availability, security, and performance. This 
+                means customers of all sizes and industries can use it to store and protect any amount of data for a range of 
+                use cases, such as websites, mobile applications, backup and restore, archive, enterprise applications, IoT 
+                devices, and big data analytics.
+            </p>
+            <p>
+                Amazon S3 provides easy-to-use management features so you can organize your data and configure finely-tuned 
+                access controls to meet your specific business, organizational, and compliance requirements. Amazon S3 is 
+                designed for 99.999999999% (11 9's) of durability, and stores data for millions of applications for companies 
+                all around the world.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="row shadow-sm p-3 mb-5 bg-white rounded" style="margin-top:2rem;">
+    <div class="container ml-4">
+        <h4>Your buckets. <small class="text-muted">Click a bucket to see a sampling of the objects it contains.</small></h4>
+
+        <div class="d-flex">
+            <div class="flex-column flex-grow-0">
+                <div class="list-group">
+                    @foreach (var bucket in Model.Buckets)
+                    {
+                        <a asp-page="/S3" asp-route-bucketname="@bucket.BucketName" class="list-group-item">@bucket.BucketName</a>
+                    }
+                </div>
+            </div>
+            <div class="flex-column flex-grow-1 pl-4">
+                @if (Model.SelectedBucket != null)
+                {
+                    <div class="row">
+                        <p>
+                            Bucket @Model.SelectedBucket.BucketName was created on @Model.SelectedBucket.CreationDate.ToString("D")
+                            in the @Model.BucketRegion region.
+                            <br />
+                        </p>
+                        @{
+                            if (Model.BucketObjects.Count != 0)
+                            {
+                                <p>Below are some of the objects it contains.</p>
+                            }
+                            else
+                            {
+                                <p>It contains no objects.</p>
+                            }
+                        }
+                    </div>
+                    <div>
+                        @foreach (var obj in Model.BucketObjects)
+                        {
+                            <div>@obj.Key</div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

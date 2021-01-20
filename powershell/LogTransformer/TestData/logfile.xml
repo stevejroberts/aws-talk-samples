@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LogData xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <LogEntry EventTime="2018-11-02T11:15:30Z">
+        <Status>Warning</Status>
+        <Message>Failed to download some assets</Message>
+    </LogEntry>
+    <LogEntry EventTime="2018-11-03T17:25:20Z">
+        <Status>OK</Status>
+        <Message>Recovered from dowload failure</Message>
+    </LogEntry>
+</LogData>

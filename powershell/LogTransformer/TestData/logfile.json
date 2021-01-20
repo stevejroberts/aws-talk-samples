@@ -1,0 +1,24 @@
+{
+    "LogEntries" : [
+        {
+            "LoggedAt": "2018-10-28T11:45:30Z",
+            "Status": "OK",
+            "Message": "All good!"
+        },
+        {
+            "LoggedAt": "2018-10-29T09:55:00Z",
+            "Status": "Error",
+            "Message": "Whoopsie, I crash"
+        },
+        {
+            "LoggedAt": "2018-10-29T09:56:30Z",
+            "Status": "Error",
+            "Message": "Uh oh, I crashed recovering from the crash"
+        },
+        {
+            "LoggedAt": "2018-10-30T00:05:10Z",
+            "Status": "OK",
+            "Message": "Back to all good"
+        }
+    ]
+}

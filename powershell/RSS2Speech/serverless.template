@@ -1,0 +1,150 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Parameters": {
+        "UserEmail" : {
+            "Type" : "String",
+            "Description" : "User email for notifications"
+        }
+    },
+    "Resources": {
+        "OutputBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "BucketName": {
+                    "Fn::Sub": "${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+                }
+            }
+        },
+        "OutputBucketNameParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Properties" : {
+                "Name" : "/RSS2Speech/OutputBucket",
+                "Type" : "String",
+                "Value" : { "Ref": "OutputBucket" }
+            }
+        },
+        "NotificationTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "Subscription" : [
+                    {
+                        "Protocol" : "email",
+                        "Endpoint" : { "Ref": "UserEmail" }
+                    }
+                ]
+            }
+        },
+        "NotificationTopicArnParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Properties" : {
+                "Name" : "/RSS2Speech/NotificationTopicArn",
+                "Type" : "String",
+                "Value" : { "Ref": "NotificationTopic" }
+            }
+        },
+
+        "RSS2SpeechFunction": {
+            "Type": "AWS::Serverless::Function",
+            "Properties": {
+                "Handler": "RSS2Speech::RSS2Speech.Bootstrap::ExecuteFunction",
+                "Runtime": "dotnetcore3.1",
+                "MemorySize": 512,
+                "Timeout": 30,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "RSS2SpeechFunctionRole",
+                        "Arn"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {}
+                },
+                "Events": {
+                    "ProxyResource": {
+                        "Type": "Api",
+                        "Properties": {
+                            "Path": "/{proxy+}",
+                            "Method": "ANY"
+                        }
+                    },
+                    "RootResource": {
+                        "Type": "Api",
+                        "Properties" : {
+                            "Path": "/",
+                            "Method": "ANY"
+                        }
+                    }
+                },
+                "Tracing": "Active",
+                "CodeUri": "./build/RSS2Speech.zip"
+            }
+        },
+        "RSS2SpeechFunctionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess",
+                    "arn:aws:iam::aws:policy/AmazonPollyReadOnlyAccess",
+                    "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "RSS2SpeechS3Policy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:PutObject"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:s3:::${AWS::StackName}-${AWS::Region}-${AWS::AccountId}/*"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "RSS2SpeechSNSPublishPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "sns:Publish"
+                                    ],
+                                    "Resource": {
+                                        "Ref": "NotificationTopic"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "Outputs" : {
+    }
+}

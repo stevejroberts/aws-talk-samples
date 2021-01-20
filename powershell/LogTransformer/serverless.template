@@ -1,0 +1,249 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Description": "An AWS Serverless Application using Step Functions to transform input log files from varying formats.",
+
+    "Resources": {
+
+        "DetermineLogTypeTask": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "StateMachineFunctions::StateMachineFunctions.Bootstrap::ExecuteFunction",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 512,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": "./package/StateMachineFunctions.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "AWS_POWERSHELL_FUNCTION_HANDLER": "Test-EventLogType"
+                    }
+                }
+            }
+        },
+        "TransformCsvLogTask": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "StateMachineFunctions::StateMachineFunctions.Bootstrap::ExecuteFunction",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 512,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": "./package/StateMachineFunctions.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "AWS_POWERSHELL_FUNCTION_HANDLER": "Invoke-CsvLogTransform",
+                        "LOG_GROUP_NAME": {
+                            "Ref": "TransformOutputLogGroup"
+                        }
+                    }
+                }
+            }
+        },
+        "TransformXmlLogTask": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "StateMachineFunctions::StateMachineFunctions.Bootstrap::ExecuteFunction",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 512,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": "./package/StateMachineFunctions.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "AWS_POWERSHELL_FUNCTION_HANDLER": "Invoke-XmlLogTransform",
+                        "LOG_GROUP_NAME": {
+                            "Ref": "TransformOutputLogGroup"
+                        }
+                    }
+                }
+            }
+        },
+        "TransformJsonLogTask": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "StateMachineFunctions::StateMachineFunctions.Bootstrap::ExecuteFunction",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 512,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": "./package/StateMachineFunctions.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "AWS_POWERSHELL_FUNCTION_HANDLER": "Invoke-JsonLogTransform",
+                        "LOG_GROUP_NAME": {
+                            "Ref": "TransformOutputLogGroup"
+                        }
+                    }
+                }
+            }
+        },
+
+        "StateMachine": {
+            "Type": "AWS::StepFunctions::StateMachine",
+            "Properties": {
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "StateMachineRole",
+                        "Arn"
+                    ]
+                },
+                "DefinitionString": {
+                    "Fn::Sub": ""
+                }
+            }
+        },
+
+        "TransformOutputLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "RetentionInDays": 1,
+                "LogGroupName" : {
+                    "Fn::Join" : [
+                        "",
+                        [
+                            { "Ref" : "AWS::StackName" },
+                            "LogGroup"
+                        ]
+                    ]
+                }
+            }
+        },
+
+        "LambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+                "Policies" : [
+                    {
+                        "PolicyName": "CloudWatchLoggingPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudwatch:PutMetricData",
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:DescribeLogGroups",
+                                        "logs:DescribeLogStreams",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "S3BucketPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "StateMachineRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": {
+                                    "Fn::Sub": "states.${AWS::Region}.amazonaws.com"
+                                }
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "StepFunctionLambdaInvoke",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "lambda:InvokeFunction"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    },
+
+    "Outputs": {
+        "StateMachineArn" : {
+            "Value" : { "Ref" : "StateMachine" }
+        }
+    }
+}

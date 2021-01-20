@@ -1,0 +1,79 @@
+﻿@page
+@model MiniMeConsole.Pages.ECSModel
+@{
+    ViewData["Title"] = "Amazon ECS";
+}
+
+<div class="row" style="margin-top:2rem;">
+    <div class="media">
+        <div class="media-left">
+            <img class="media-object" src="~/img/Amazon-EC2@4x.png" alt="Amazon EC2" />
+        </div>
+        <div class="media-body" style="margin-left:2rem;">
+            <h4 class="media-heading">Amazon ECS</h4>
+            <p class="lead">
+                <a href="https://aws.amazon.com/ecs/" target="_blank">Amazon Elastic Container Service (Amazon ECS)</a> is 
+                a fully managed container orchestration service. Customers such as Duolingo, Samsung, GE, and Cookpad use 
+                ECS to run their most sensitive and mission critical applications because of its security, reliability, and 
+                scalability.
+            </p>
+            <p>
+                ECS is a great choice to run containers for several reasons. First, you can choose to run your ECS clusters 
+                using <a href="https://aws.amazon.com/fargate/" target="_blank">AWS Fargate</a>, which is serverless compute 
+                for containers. Fargate removes the need to provision and manage servers, lets you specify and pay for 
+                resources per application, and improves security through application isolation by design. Second, ECS is used 
+                extensively within Amazon to power services such as <a href="https://aws.amazon.com/sagemaker/" target="_blank">Amazon SageMaker</a>, 
+                <a href="https://aws.amazon.com/batch/" target="_blank">AWS Batch</a>, 
+                <a href="https://aws.amazon.com/lex/" target="_blank">Amazon Lex</a>, and Amazon.com’s recommendation engine, 
+                ensuring ECS is tested extensively for security, reliability, and availability.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="row border shadow-sm p-3 mb-5 bg-white rounded" style="margin-top:2rem">
+
+    <div class="d-block ml-4">
+        <h4>Your Clusters in United States Regions</h4>
+    </div>
+
+    <div class="container ml-4">
+        @foreach (var region in Model.Clusters.Keys)
+        {
+            var clusters = Model.Clusters[region];
+
+            if (clusters.Count == 0)
+            {
+                <h5>@region</h5>
+                <small class="d-block text-muted mb-2 ml-4">There are no clusters in this region.</small>
+            }
+            else
+            {
+                <h5>@region</h5>
+                <table class="table table-bordered table-sm ml-4">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Cluster Name</th>
+                            <th>Status</th>
+                            <th>Pending Tasks</th>
+                            <th>Running Tasks</th>
+                            <th>Active Services</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cluster in clusters)
+                        {
+                            <tr>
+                                <td>@cluster.ClusterName</td>
+                                <td>@cluster.Status</td>
+                                <td>@cluster.PendingTasksCount</td>
+                                <td>@cluster.RunningTasksCount</td>
+                                <td>@cluster.ActiveServicesCount</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </div>
+</div>

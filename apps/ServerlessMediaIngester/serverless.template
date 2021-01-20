@@ -1,0 +1,1122 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Description": "An AWS Lambda and AWS Step Functions demo serverless application to ingest and process various types of media using AI services from AWS.",
+    "Parameters": {
+        "InputsRootPath": {
+            "Type": "String",
+            "Description": "The root key path (key prefix) in the bucket created by this template where objects will be uploaded for processing.",
+            "Default": "inputs"
+        },
+        "OutputsRootPath": {
+            "Type": "String",
+            "Description": "The root key path (key prefix) under which processed objects will be placed in the bucket created by this template. NOTE: this must not be the same as the input key path otherwise a never-ending loop will ensue!",
+            "Default": "outputs"
+        },
+        "AudioVoice": {
+            "Type": "String",
+            "Description": "The voice to use for audio conversions of text media.",
+            "Default": "Joanna",
+            "AllowedValues": [
+                "Geraint",
+                "Gwyneth",
+                "Mads",
+                "Naja",
+                "Hans",
+                "Marlene",
+                "Nicole",
+                "Russell",
+                "Amy",
+                "Brian",
+                "Emma",
+                "Raveena",
+                "Ivy",
+                "Joanna",
+                "Joey",
+                "Justin",
+                "Kendra",
+                "Kimberly",
+                "Matthew",
+                "Salli",
+                "Conchita",
+                "Enrique",
+                "Miguel",
+                "Penelope",
+                "Chantal",
+                "Celine",
+                "Lea",
+                "Mathieu",
+                "Dora",
+                "Karl",
+                "Carla",
+                "Giorgio",
+                "Mizuki",
+                "Liv",
+                "Lotte",
+                "Ruben",
+                "Ewa",
+                "Jacek",
+                "Jan",
+                "Maja",
+                "Ricardo",
+                "Vitoria",
+                "Cristiano",
+                "Ines",
+                "Carmen",
+                "Maxim",
+                "Tatyana",
+                "Astrid",
+                "Filiz",
+                "Vicki",
+                "Takumi",
+                "Seoyeon",
+                "Aditi",
+                "Zhiyu",
+                "Bianca",
+                "Lucia",
+                "Mia"
+            ]
+        },
+        "MinConfidenceForKeywording": {
+            "Type": "Number",
+            "Description": "The minimum confidence level for the keyword labels to detect in image or video media.",
+            "Default": 55
+        },
+        "MinConfidenceForModeration": {
+            "Type": "Number",
+            "Description": "The minimum confidence level for the moderation labels to detect in image or video media. If any labels are detected at this level or above the media is rejected.",
+            "Default": 50
+        },
+        "ImageThumbnailMaxDimension": {
+            "Type": "Number",
+            "Description": "The maximum length dimension, in pixels, that images will be resized to.",
+            "Default": 1024
+        },
+        "NotificationEmail": {
+            "Type": "String",
+            "Description": "Optional email to subscribe to the SNS ingestion-completed topic. NOTE: you must confirm the subscription before emails can be received.",
+            "Default": ""
+        }
+    },
+    "Conditions": {
+        "SetupEmailSubscription": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NotificationEmail"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "PendingJobsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Description": "Holds job ids and serialized state for async video operations, permitting the workflow to be restarted when the async operations complete.",
+            "Properties": {
+                "TableName": "PendingIngestionJobs",
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "JobId",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "JobId",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": "5",
+                    "WriteCapacityUnits": "10"
+                }
+            }
+        },
+
+        "PendingJobsTablePolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "PendingJobsTablePolicy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "dynamodb:DeleteItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:PutItem"
+                            ],
+                            "Resource": {
+                                "Fn::GetAtt": [
+                                    "PendingJobsTable",
+                                    "Arn"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "MediaIngestionTriggerFunctionsRole"
+                    },
+                    {
+                        "Ref": "MediaIngestionStepFunctionsRole"
+                    }
+                ]
+            }
+        },
+
+        "NewObjectTriggerFunction": {
+            "Type": "AWS::Serverless::Function",
+            "Description": "The trigger function that will respond to created/updated events for objects in the input key path of the input bucket and start the processing workflow.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.TriggerFunctions::NewObjectHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionTriggerFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "CodeUri": "",
+                "Tracing" : "Active",
+                "Events": {
+                    "ObjectCreatedOrUpdated": {
+                        "Type": "S3",
+                        "Properties": {
+                            "Bucket": {
+                                "Ref": "IngestBucket"
+                            },
+                            "Filter": {
+                                "S3Key": {
+                                    "Rules": [
+                                        {
+                                            "Name": "prefix",
+                                            "Value": {
+                                                "Ref": "InputsRootPath"
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            "Events": [
+                                "s3:ObjectCreated:*"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+
+        "AsyncJobCompletedTriggerFunction": {
+            "Type": "AWS::Serverless::Function",
+            "Description": "The trigger function that will respond to SNS notifications that a long-running async operation has completed and we can 'resume' the workflow from whete it left off.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.TriggerFunctions::ResumeWorkflowHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionTriggerFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Tracing" : "Active",
+                "CodeUri": "",
+                "Events": {
+                    "AsyncVideoOperationCompleted": {
+                        "Type": "SNS",
+                        "Properties": {
+                            "Topic": {
+                                "Ref": "AsyncVideoOperationCompletedTopic"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+
+        "DetermineNewMediaTypeTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that inspects the uploaded object filename and determines the processing to be performed.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.DetermineNewMediaTypeTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "InspectForModerationLabelsTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that verifies the uploaded media is safe and contains no flagged-for-moderation content.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.InspectForModerationLabelsTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "ResumeAfterModerationInspectionTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that clears the pending state before continuing.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.ResumeAfterModerationInspectionTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "InspectForKeywordLabelsTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that inspects, using Amazon Rekognition, the uploaded image or video content to determine 'labels' of elements the media contains.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.InspectForKeywordLabelsTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "ResumeAfterKeywordInspectionTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that collects the async job output from keyword inspection of a video.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.ResumeAfterKeywordInspectionTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "InspectForCelebritiesTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that inspects, using Amazon Rekognition, the uploaded image or video content to determine the names of any celebrities it contains.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.InspectForCelebritiesTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "ResumeAfterCelebrityInspectionTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that collects the async job output from celebrity inspection of a video.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.ResumeAfterCelebrityInspectionTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "CreateThumbnailImageTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task thar reduces an image to a thumbnail version.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.CreateThumbnailImageTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "AudioToTextConversionTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that uses Amazon Transcribe to convert an audio file to text.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.AudioToTextConversionTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 900,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "TextToAudioConversionTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that uses Amazon Polly to convert a text file to an audio (mp3 format) file.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.TextToAudioConversionTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 900,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "CopyAndTagSourceContentTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that copies the source object to the appropriate output path for image and video media, and attaches tags based on the output of the keyword and celebrity inspections.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.CopyAndTagSourceContentTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "RemoveProcessedInputObjectTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that deletes the original input once it has been fully processed, or declared unsafe and abandoned.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.RemoveProcessedInputObjectTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "SendIngestionCompletedNotificationTask": {
+            "Type": "AWS::Lambda::Function",
+            "Description": "Step functions task that sends a notification to an SNS topic that the workflow is complete and processed output can be found in the outputs key path of the output bucket.",
+            "Properties": {
+                "Handler": "MediaIngester::MediaIngester.WorkflowStepFunctions.SendIngestionCompletedNotificationTask::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "MediaIngestionStepFunctionsRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "dotnetcore2.1",
+                "MemorySize": 256,
+                "Timeout": 30,
+                "Code": {
+                    "S3Bucket": "",
+                    "S3Key": ""
+                },
+                "TracingConfig" : {
+					"Mode" : "Active"
+				}
+            }
+        },
+
+        "IngestionCompletedTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Description": "SNS topic that receives workflow completion notifications.",
+            "Properties": {
+                "DisplayName": "IngestionCompleted"
+            }
+        },
+
+        "AsyncVideoOperationCompletedTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Description": "SNS topic that is used to receive service notifications when async operations on video media are completed and the workflow can resume where it left off.",
+            "Properties": {
+                "DisplayName": "AsyncVideoOperationCompleted"
+            }
+        },
+
+        "EmailSubscription": {
+            "Type": "AWS::SNS::Subscription",
+            "Condition": "SetupEmailSubscription",
+            "Properties": {
+                "Protocol": "email",
+                "Endpoint": {
+                    "Ref": "NotificationEmail"
+                },
+                "TopicArn": {
+                    "Ref": "IngestionCompletedTopic"
+                }
+            }
+        },
+
+        "IngestBucket": {
+            "Type": "AWS::S3::Bucket",
+            "DeletionPolicy": "Retain",
+            "Description": "The S3 storage bucket that will be used to hold content to ingest as well as processed content."
+        },
+
+        "StateMachine": {
+            "Type": "AWS::StepFunctions::StateMachine",
+            "Description": "The state machine containing a series of tasks to process the uploaded media. Execution of the first task in the state machine is requested by the WorkflowTriggerFunction defined in this template.",
+            "Properties": {
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "StateMachineRole",
+                        "Arn"
+                    ]
+                },
+                "DefinitionString": {
+                    "Fn::Sub": ""
+                }
+            }
+        },
+
+        "MediaIngestionTriggerFunctionsRole": {
+            "Type": "AWS::IAM::Role",
+            "Description": "The role and associated policies that permit the trigger functions which responds to object created/updated events from Amazon S3, and video operations completed notifications from Amazon Rekognition, to start the ingestion workflow state machine.",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess",
+                    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
+                    "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
+                ]
+            }
+        },
+
+        "MediaIngesterStartExecutionPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "StartWorkflowExecutionPolicy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "StartExecutionAction",
+                            "Effect": "Allow",
+                            "Action": "states:StartExecution",
+                            "Resource": {
+                                "Ref": "StateMachine"
+                            }
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "MediaIngestionTriggerFunctionsRole"
+                    }
+                ]
+            }
+        },
+
+        "MediaIngestionStepFunctionsRole": {
+            "Type": "AWS::IAM::Role",
+            "Description": "The role and associated policies that permit the Lambda functions contained in the step functions state machine to make calls to AWS services. This role applies to all the step functions, alternately we could create separate roles for each function.",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess",
+                    "arn:aws:iam::aws:policy/AmazonRekognitionReadOnlyAccess",
+                    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
+                    "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess",
+                    "arn:aws:iam::aws:policy/AmazonPollyReadOnlyAccess"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "IngestBucketPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "ProcessedInputsActions",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:DeleteObject"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:s3:::",
+                                                {
+                                                    "Ref": "IngestBucket"
+                                                },
+                                                "/",
+                                                {
+                                                    "Ref": "InputsRootPath"
+                                                },
+                                                "/*"
+                                            ]
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Sid": "ProcessedOutputsActions",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:PutObjectTagging"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:s3:::",
+                                                {
+                                                    "Ref": "IngestBucket"
+                                                },
+                                                "/",
+                                                {
+                                                    "Ref": "OutputsRootPath"
+                                                },
+                                                "/*"
+                                            ]
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "TranscriptionJobsPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "transcribe:StartTranscriptionJob",
+                                        "transcribe:GetTranscriptionJob"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "RekognitionStartOperationsPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "rekognition:StartContentModeration",
+                                        "rekognition:StartCelebrityRecognition",
+                                        "rekognition:StartLabelDetection"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "CompletionNotificationsPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "sns:Publish"
+                                    ],
+                                    "Resource": {
+                                        "Ref": "IngestionCompletedTopic"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "RekognitionPassRole",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:PassRole"
+                                    ],
+                                    "Resource": {
+                                        "Fn::GetAtt": [
+                                            "RekognitionServiceRole",
+                                            "Arn"
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "RekognitionServiceRole": {
+            "Type": "AWS::IAM::Role",
+            "Description": "Role permitting Amazon Rekognition to publish job completion notifications to the AsyncVideoOperationCompletedTopic.",
+            "DependsOn": "AsyncVideoOperationCompletedTopic",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "rekognition.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AmazonRekognitionServiceRole"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "JobCompletionNotificationsPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "sns:Publish"
+                                    ],
+                                    "Resource": {
+                                        "Ref": "AsyncVideoOperationCompletedTopic"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "StateMachineRole": {
+            "Type": "AWS::IAM::Role",
+            "Description": "Role permitting AWS Step Functions to invoke the Lambda functions associated with the state machine.",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": {
+                                    "Fn::Sub": "states.${AWS::Region}.amazonaws.com"
+                                }
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "MediaIngesterStepFunctionsInvokeLambdaFunctionPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "lambda:InvokeFunction"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "DetermineNewMediaTypeTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "InspectForModerationLabelsTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "ResumeAfterModerationInspectionTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "InspectForKeywordLabelsTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "ResumeAfterKeywordInspectionTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "InspectForCelebritiesTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "ResumeAfterCelebrityInspectionTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "CreateThumbnailImageTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "AudioToTextConversionTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "TextToAudioConversionTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "CopyAndTagSourceContentTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "RemoveProcessedInputObjectTask",
+                                                "Arn"
+                                            ]
+                                        },
+                                        {
+                                            "Fn::GetAtt": [
+                                                "SendIngestionCompletedNotificationTask",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+        "StateMachineARNParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "Amazon Resource Name (ARN) of the MediaIngester step function's state machine",
+            "Properties": {
+                "Name": "/mediaingester/statemachine-arn",
+                "Type": "String",
+                "Value": {
+                    "Ref": "StateMachine"
+                }
+            }
+        },
+
+        "InputsRootPathParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "The key path (key prefix) in the bucket under which under objects will be uploaded.",
+            "Properties": {
+                "Name": "/mediaingester/inputs/rootpath",
+                "Type": "String",
+                "Value": {
+                    "Ref": "InputsRootPath"
+                }
+            }
+        },
+
+        "OutputsRootPathParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "The key path (key prefix) that will be used when storing processed objects in the bucket.",
+            "Properties": {
+                "Name": "/mediaingester/outputs/rootpath",
+                "Type": "String",
+                "Value": {
+                    "Ref": "OutputsRootPath"
+                }
+            }
+        },
+
+        "MinConfidenceForKeywordingParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "The minimum confidence level for the keyword labels to detect in image or video media.",
+            "Properties": {
+                "Name": "/mediaingester/min-keyword-confidence",
+                "Type": "String",
+                "Value": {
+                    "Ref": "MinConfidenceForKeywording"
+                }
+            }
+        },
+
+        "MinConfidenceForModerationParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "The minimum confidence level for the keyword labels to detect in image or video media.",
+            "Properties": {
+                "Name": "/mediaingester/min-moderation-confidence",
+                "Type": "String",
+                "Value": {
+                    "Ref": "MinConfidenceForKeywording"
+                }
+            }
+        },
+
+        "VoiceIdParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "The selected voice to use for text to audio conversions.",
+            "Properties": {
+                "Name": "/mediaingester/outputs/voice-id",
+                "Type": "String",
+                "Value": {
+                    "Ref": "AudioVoice"
+                }
+            }
+        },
+
+        "ThumbnailMaxDimensionParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "The maximum dimension, in pixels, for the long side of an image thumbnail.",
+            "Properties": {
+                "Name": "/mediaingester/outputs/thumbnails-maxdimension",
+                "Type": "String",
+                "Value": {
+                    "Ref": "ImageThumbnailMaxDimension"
+                }
+            }
+        },
+
+        "RekognitionServiceRoleParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "The Amazon Resource Name (ARN) of the role permitting Amazon Rekognition to publish to our async job completed topic.",
+            "Properties": {
+                "Name": "/mediaingester/roles/rekognition-service-role",
+                "Type": "String",
+                "Value": {
+                    "Fn::GetAtt": [
+                        "RekognitionServiceRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+
+        "AsyncVideoOperationCompletedTopicArnParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "The Amazon Resource Name (ARN) of the SNS topic to which async video operations can report completion.",
+            "Properties": {
+                "Name": "/mediaingester/notification-arns/asyncoperation-completed",
+                "Type": "String",
+                "Value": {
+                    "Ref": "AsyncVideoOperationCompletedTopic"
+                }
+            }
+        },
+
+        "IngestionCompletedTopicArnParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "The Amazon Resource Name (ARN) of the SNS topic to which completion notifications will be sent.",
+            "Properties": {
+                "Name": "/mediaingester/notification-arns/ingest-completed",
+                "Type": "String",
+                "Value": {
+                    "Ref": "IngestionCompletedTopic"
+                }
+            }
+        },
+
+        "PendingJobsTableParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Description": "The name of the table holding pending async jobs and the state associated with the workflow at the time.",
+            "Properties": {
+                "Name": "/mediaingester/pending-jobs-table",
+                "Type": "String",
+                "Value": {
+                    "Ref": "PendingJobsTable"
+                }
+            }
+        }
+    },
+    "Outputs": {}
+}

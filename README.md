@@ -1,2 +1,2 @@
-# talk-samples
-.NET and PowerShell demo samples from talks at various user groups and conferences.
+# TalkDemos
+Demos illustrating .NET and PowerShell usage on AWS, used in various user group and conference sessions

@@ -1,0 +1,59 @@
+{
+    "resource": "/{proxy+}",
+    "path": "/",
+    "httpMethod": "GET",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": {
+        "feed": "http://feeds.feedburner.com/AmazonWebServicesBlog",
+        "maxPosts": "5",
+        "voiceId": "Nicole"
+    },
+    "multiValueQueryStringParameters": {
+        "feed": [
+            "http://feeds.feedburner.com/AmazonWebServicesBlog"
+        ],
+        "maxPosts": [
+            "5"
+        ],
+        "voiceId": [
+            "Nicole"
+        ]
+    },
+    "pathParameters": null,
+    "stageVariables": null,
+    "requestContext": {
+        "resourceId": "ypgql4",
+        "resourcePath": "/{proxy+}",
+        "httpMethod": "GET",
+        "extendedRequestId": "ALXq-FV5vHcFZVA=",
+        "requestTime": "17/Sep/2019:19:52:25 +0000",
+        "path": "/{proxy+}",
+        "accountId": "939934531084",
+        "protocol": "HTTP/1.1",
+        "stage": "test-invoke-stage",
+        "domainPrefix": "testPrefix",
+        "requestTimeEpoch": 1568749945355,
+        "requestId": "78660222-e741-4897-8351-4ee097ad4224",
+        "identity": {
+            "cognitoIdentityPoolId": null,
+            "cognitoIdentityId": null,
+            "apiKey": "test-invoke-api-key",
+            "principalOrgId": null,
+            "cognitoAuthenticationType": null,
+            "userArn": "",
+            "apiKeyId": "test-invoke-api-key-id",
+            "userAgent": "aws-internal/3 aws-sdk-java/1.11.590 Linux/4.9.184-0.1.ac.235.83.329.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.212-b03 java/1.8.0_212 vendor/Oracle_Corporation",
+            "accountId": "",
+            "caller": "",
+            "sourceIp": "test-invoke-source-ip",
+            "accessKey": "",
+            "cognitoAuthenticationProvider": null,
+            "user": ""
+        },
+        "domainName": "testPrefix.testDomainName",
+        "apiId": ""
+    },
+    "body": null,
+    "isBase64Encoded": false
+}

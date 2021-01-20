@@ -1,0 +1,4 @@
+EventTime,Status,Message
+2018-10-30T13:45:30Z,Error,Failed to process something
+2018-11-01T10:05:00Z,Warning,Something else happened
+2018-11-14T18:25:15Z,OK,All good, no need to panic, just reporting in

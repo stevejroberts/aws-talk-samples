@@ -1,0 +1,84 @@
+﻿@page
+@model MiniMeConsole.Pages.EC2Model
+@{
+    ViewData["Title"] = "Amazon EC2";
+}
+
+<div class="row" style="margin-top:2rem;">
+    <div class="media">
+        <div class="media-left">
+            <img class="media-object" src="~/img/Amazon-EC2@4x.png" alt="Amazon EC2" />
+        </div>
+        <div class="media-body" style="margin-left:2rem;">
+            <h4 class="media-heading">Amazon EC2</h4>
+            <p class="lead">
+                <a href="https://aws.amazon.com/ec2/" target="_blank">Amazon Elastic Compute Cloud (Amazon EC2)</a> 
+                is a web service that provides secure, resizable compute capacity in the cloud.
+            </p>
+            <p>
+                EC2 is designed to make web-scale cloud computing easier for developers. Amazon
+                EC2’s simple web service interface allows you to obtain and configure capacity with minimal friction.
+                It provides you with complete control of your computing resources and lets you run on Amazon’s proven
+                computing environment.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="row border shadow-sm p-3 mb-5 bg-white rounded" style="margin-top:2rem">
+
+    <div class="d-block ml-4">
+        <h4>Your Instances in United States Regions</h4>
+    </div>
+
+    <div class="container ml-4">
+        @foreach (var region in Model.Instances.Keys)
+        {
+
+            var instances = Model.Instances[region];
+
+            if (instances.Count == 0)
+            {
+                <h5>@region</h5>
+                <small class="d-block text-muted mb-2 ml-4">There are no instances in this region.</small>
+            }
+            else
+            {
+                <h5>@region</h5>
+                <table class="table table-bordered table-sm ml-4">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Instance ID</th>
+                            <th>Name</th>
+                            <th>Size</th>
+                            <th>Launched</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var instance in instances)
+                        {
+                            <tr>
+                                <td>@instance.InstanceId</td>
+                                @{
+                                    var nameTag = instance.Tags.Find(t => t.Key.Equals("name", StringComparison.OrdinalIgnoreCase));
+                                    if (nameTag != null)
+                                    {
+                                        <td>@nameTag.Value</td>
+                                    }
+                                    else
+                                    {
+                                        <td></td>
+                                    }
+                                }
+                                <td>@instance.InstanceType</td>
+                                <td>@instance.LaunchTime.ToString("D")</td>
+                                <td>@instance.State.Name</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </div>
+</div>

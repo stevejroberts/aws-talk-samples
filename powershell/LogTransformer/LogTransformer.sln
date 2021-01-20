@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2050
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LogTransformer", "LogTransformer.csproj", "{BFF630F6-96EA-43C2-9195-F94F56F123DC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BFF630F6-96EA-43C2-9195-F94F56F123DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BFF630F6-96EA-43C2-9195-F94F56F123DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BFF630F6-96EA-43C2-9195-F94F56F123DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BFF630F6-96EA-43C2-9195-F94F56F123DC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {780314B2-4798-4F36-A0A6-6C692E071EC7}
+	EndGlobalSection
+EndGlobal
