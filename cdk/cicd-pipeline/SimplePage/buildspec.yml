@@ -9,4 +9,4 @@ artifacts:
     - before_install.sh
     - restart_server.sh
   base-directory:
-    ./talk-demos/appdeployment/SimplePage
+    ./cdk/cicd-pipeline/SimplePage
