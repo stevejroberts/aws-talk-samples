@@ -7,9 +7,9 @@
 
   <ItemGroup>
     <!-- CDK Construct Library dependencies -->
-    <PackageReference Include="Amazon.CDK" Version="1.85.0" />
-    <PackageReference Include="Amazon.CDK.AWS.SQS" Version="1.85.0" />
-    <PackageReference Include="Amazon.CDK.AWS.S3.Notifications" Version="1.85.0" />
+    <PackageReference Include="Amazon.CDK" Version="1.86.0" />
+    <PackageReference Include="Amazon.CDK.AWS.SQS" Version="1.86.0" />
+    <PackageReference Include="Amazon.CDK.AWS.S3.Notifications" Version="1.86.0" />
   </ItemGroup>
 
 </Project>
