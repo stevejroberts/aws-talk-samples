@@ -10,6 +10,6 @@
     "@aws-cdk/aws-s3:grantWriteWithoutAcl": true,
     "DeploymentApplicationName": "WindowsWebServerFleet",
     "DeploymentGroupName": "WindowsWebServerFleetDeploymentGroup",
-    "AppBundleName": "SampleWebApplication.webdeploy.zip"
+    "AppBundleName": "WebApplicationBundle.zip"
   }
 }
