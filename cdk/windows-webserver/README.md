@@ -10,7 +10,7 @@ The command `cdk list` can be used to discover the names of the stacks contained
 
 To deploy the stacks, run the following commands in order.
 
-```bash
+```powershell
 cdk deploy WindowsWebServerFleet
 cdk deploy WindowsWebServerFleetDeployment
 ```
@@ -18,7 +18,7 @@ cdk deploy WindowsWebServerFleetDeployment
 The included app, bundled into a zip file with the supporting CodeDeploy scripts, is simply an ASP.NET sample generated from the templates included with Visual Studio and packaged as a web deploy bundle. To upload and deploy the sample app via CodeDeploy, run the following command which uses cmdlets from the AWS Tools for PowerShell. The bucket name can be found in your output from the deployment of the `WindowsWebServerFleet` stack.
 
 ```powershell
-.\New-CodeDeployment.ps1 -ApplicationName WindowsWebServerFleet -DeploymentBundle .\SampleWebApplication.bundled.zip -BucketName BUNDLE_BUCKET_NAME_HERE -DeploymentGroupName WindowsWebServerFleetDeploymentGroup -WaitForCompletion
+.\New-CodeDeployment.ps1 -ApplicationName WindowsWebServerFleet -DeploymentBundle ".\test-app-bundle\SampleWebApplication.webdeploy.zip" -BucketName BUNDLE_BUCKET_NAME_HERE -DeploymentGroupName WindowsWebServerFleetDeploymentGroup -WaitForCompletion
 ```
 
 To verify the deployment, navigate to http://URL OF THE LOAD BALANCER/sample. You should see the homepage of the simple ASP.NET application.
