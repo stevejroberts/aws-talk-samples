@@ -9,10 +9,10 @@ namespace StaticWebsite
     {
         public StaticWebsiteStack(Construct parent, string id, IStackProps props) : base(parent, id, props)
         {
-            // Create bucket to host a static website
+            // Create bucket to host a static website; the absence of the BucketName
+            // property means the CDK will auto-name the resource
             var bucket = new Bucket(this, "WebsiteBucket", new BucketProps
             {
-                BucketName = "cdk-static-website-demo-steve",
                 PublicReadAccess = true,
                 WebsiteIndexDocument = "index.html"
             });
