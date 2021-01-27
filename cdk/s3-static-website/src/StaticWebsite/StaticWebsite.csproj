@@ -10,7 +10,6 @@
     <PackageReference Include="Amazon.CDK" Version="1.86.0" />
     <PackageReference Include="Amazon.CDK.AWS.S3" Version="1.86.0" />
     <PackageReference Include="Amazon.CDK.AWS.S3.Deployment" Version="1.86.0" />
-    <PackageReference Include="Amazon.CDK.AWS.IAM" Version="1.86.0" />
   </ItemGroup>
 
 </Project>
