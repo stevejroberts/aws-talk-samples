@@ -62,5 +62,5 @@ foreach ($record in $LambdaInput.Records) {
     }
 
     $msgId = Publish-SNSMessage @publishArgs
-    Write-Host "Published message with recept ID $msgId"
+    Write-Host "Published message with receipt ID $msgId"
 }
