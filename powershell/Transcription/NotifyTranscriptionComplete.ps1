@@ -22,10 +22,10 @@
 # has one module per AWS service plus a common shared module. The Lambda tooling
 # doesn't currently follow the dependency chain so we have to be explicit and add
 # the common module.
-#Requires -Modules @{ModuleName='AWS.Tools.Common';ModuleVersion='4.0.6.0'}
-#Requires -Modules @{ModuleName='AWS.Tools.S3';ModuleVersion='4.0.6.0'}
-#Requires -Modules @{ModuleName='AWS.Tools.SimpleNotificationService';ModuleVersion='4.0.6.0'}
-#Requires -Modules @{ModuleName='AWS.Tools.SimpleSystemsManagement';ModuleVersion='4.0.6.0'}
+#Requires -Modules @{ModuleName='AWS.Tools.Common';ModuleVersion='4.1.8.0'}
+#Requires -Modules @{ModuleName='AWS.Tools.S3';ModuleVersion='4.1.8.0'}
+#Requires -Modules @{ModuleName='AWS.Tools.SimpleNotificationService';ModuleVersion='4.1.8.0'}
+#Requires -Modules @{ModuleName='AWS.Tools.SimpleSystemsManagement';ModuleVersion='4.1.8.0'}
 
 $parameterNameRoot = $env:ParameterNameRoot
 
@@ -60,5 +60,7 @@ foreach ($record in $LambdaInput.Records) {
         Subject = "Transcription completed"
         Message = "Transcription file $key is now available at $s3uri"
     }
-    Publish-SNSMessage @publishArgs
+
+    $msgId = Publish-SNSMessage @publishArgs
+    Write-Host "Published message with recept ID $msgId"
 }
