@@ -1,0 +1,160 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Description": "",
+
+    "Parameters": {
+        "ConfidenceLevel": {
+            "Type" : "Number",
+            "Description" : "The minimum confidence level when detecting an object for it to be reported.",
+            "Default" : "70"
+        }
+    },
+
+    "Resources": {
+        "InputBucket": {
+            "Type": "AWS::S3::Bucket",
+            "DependsOn": "InputBucketInvokePermission",
+            "Properties": {
+                "BucketName": {
+                    "Fn::Sub": "${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+                },
+                "NotificationConfiguration": {
+                    "LambdaConfigurations": [
+                        {
+                            "Function": {
+                                "Fn::GetAtt": [
+                                    "DetectImageObjectsFunction",
+                                    "Arn"
+                                ]
+                            },
+                            "Event": "s3:ObjectCreated:*"
+                        }
+                    ]
+                }
+            }
+        },
+
+        "InputBucketInvokePermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "DetectImageObjectsFunction",
+                        "Arn"
+                    ]
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "s3.amazonaws.com",
+                "SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                },
+                "SourceArn": {
+                    "Fn::Sub": "arn:aws:s3:::${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+                }
+            }
+        },
+
+        "InputBucketNameParameter": {
+            "Type": "AWS::SSM::Parameter",
+            "Properties" : {
+                "Name" : { "Fn::Sub": "/${AWS::StackName}/InputBucket" },
+                "Type" : "String",
+                "Value" : { "Ref": "InputBucket" }
+            }
+        },
+
+        "DetectImageObjectsFunction": {
+            "Type": "AWS::Serverless::Function",
+            "Properties": {
+                "Handler": "DetectImageObjects::DetectImageObjects.Bootstrap::ExecuteFunction",
+                "Runtime": "dotnetcore3.1",
+                "MemorySize": 512,
+                "Timeout": 30,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "DetectImageObjectsFunctionRole",
+                        "Arn"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "MinConfidence": { "Ref" : "ConfidenceLevel" }
+                    }
+                },
+                "CodeUri": "./build/DetectImageObjects.zip"
+            }
+        },
+
+        "DetectImageObjectsFunctionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "TranscriptionPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:Get*",
+                                        "s3:List*"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:s3:::${AWS::StackName}-${AWS::Region}-${AWS::AccountId}/*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:Put*"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:s3:::${AWS::StackName}-${AWS::Region}-${AWS::AccountId}/*"
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "rekognition:DetectLabels"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+
+    "Outputs": {
+        "InputBucket": {
+            "Description": "S3 bucket for image file upload",
+            "Value": {
+                "Ref": "InputBucket"
+            }
+        }
+    }
+}
