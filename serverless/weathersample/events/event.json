@@ -1,16 +1,16 @@
 {
-    "body": "{\"message\": \"hello world\"}",
-    "resource": "/{proxy+}",
-    "path": "/path/to/resource",
-    "httpMethod": "POST",
+    "body": "",
+    "resource": "/",
+    "path": "",
+    "httpMethod": "GET",
     "isBase64Encoded": false,
     "queryStringParameters": {
+      "zipcode": "98006"
     },
     "pathParameters": {
-      "proxy": "/path/to/resource"
+      "proxy": ""
     },
     "stageVariables": {
-      "baz": "qux"
     },
     "headers": {
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -52,9 +52,9 @@
         "userAgent": "Custom User Agent String",
         "user": null
       },
-      "path": "/prod/path/to/resource",
-      "resourcePath": "/{proxy+}",
-      "httpMethod": "POST",
+      "path": "",
+      "resourcePath": "",
+      "httpMethod": "GET",
       "apiId": "1234567890",
       "protocol": "HTTP/1.1"
     }
