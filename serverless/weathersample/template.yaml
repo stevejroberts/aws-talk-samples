@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM Template for 'weather' sample
+
+Globals:
+  Function:
+    Timeout: 10
+
+Parameters:
+  ApiKeyParameterName:
+    Type: 'String'
+    Default: '/openweather/apikeys/default'
+    Description: The name of the Systems Manager Parameter Store key containing your API key value for the OpenWeather service.
+
+Resources:
+  CurrentWeatherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src/CurrentWeather/
+      Handler: CurrentWeather::CurrentWeather.Function::Handler
+      Runtime: dotnetcore3.1
+      MemorySize: 256
+      Policies:
+        - AWSLambdaExecute
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource:
+                !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${ApiKeyParameterName}'
+      Environment:
+        Variables:
+          OpenWeatherApiKeyParameterName: !Ref ApiKeyParameterName
+      Events:
+        RootResourcePath:
+          Type: HttpApi
+          Properties:
+            Path: "/"
+            Method: GET
+Outputs:
+  WeatherFunctionApi:
+    Description: "API Gateway endpoint URL for CurrentWeather function"
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/"

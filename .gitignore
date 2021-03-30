@@ -12,9 +12,14 @@
 demos/powershell/Transcription/build/
 demos/powershell/RSS2Speech/build/
 
+build/
+
 .vscode/
 cdk.out/
 cdk.context.json
+
+.aws-sam
+samconfig.toml
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
