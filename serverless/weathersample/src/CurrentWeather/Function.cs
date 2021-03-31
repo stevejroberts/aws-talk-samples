@@ -29,7 +29,7 @@ namespace CurrentWeather
             var apiKeyName = System.Environment.GetEnvironmentVariable(ApiKeyParameterName);
             if (string.IsNullOrEmpty(apiKeyName))
             {
-                throw new InvalidOperationException($"Expected parameter name for api key to be present in environment var {ApiKeyParameterName}");
+                throw new InvalidOperationException($"Expected name of the Parameter Store entry containing your OpenWeather API key to be supplied in environment variable named {ApiKeyParameterName}");
             }
 
             var ssmClient = new AmazonSimpleSystemsManagementClient();
@@ -99,10 +99,15 @@ namespace CurrentWeather
             */
             #endregion
 
+            if (string.IsNullOrEmpty(OpenWeatherApiKey))
+            {
+                throw new InvalidOperationException("API key for OpenWeather service unavailable during function construction; cannot continue.");
+            }
+
             var zipcode = request.QueryStringParameters[ZipCodeQueryParameter];
             if (string.IsNullOrEmpty(zipcode))
             {
-                throw new ArgumentException("Expected zipcode in query string parameters");
+                throw new ArgumentException("Expected to find 'zipcode' parameter in request's query string parameters");
             }
 
             Console.WriteLine($"Querying current weather for zipcode {zipcode}");
