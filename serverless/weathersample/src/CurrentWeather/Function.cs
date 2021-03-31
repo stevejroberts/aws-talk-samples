@@ -99,11 +99,6 @@ namespace CurrentWeather
             */
             #endregion
 
-            if (string.IsNullOrEmpty(OpenWeatherApiKey))
-            {
-                throw new InvalidOperationException("API key for OpenWeather service unavailable during function construction; cannot continue.");
-            }
-
             var zipcode = request.QueryStringParameters[ZipCodeQueryParameter];
             if (string.IsNullOrEmpty(zipcode))
             {
