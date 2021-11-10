@@ -9,17 +9,20 @@
 *.userosscache
 *.sln.docstates
 
-demos/powershell/Transcription/build/
-demos/powershell/RSS2Speech/build/
-
 build/
 
 .vscode/
+
+# CDK outputs
 cdk.out/
 cdk.context.json
 
+# AWS SAM artifacts
 .aws-sam
 samconfig.toml
+
+demos/powershell/Transcription/build/
+demos/powershell/RSS2Speech/build/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
